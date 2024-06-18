@@ -1,0 +1,12 @@
+Epoch 29, Validation Loss: 1.690, Validation Accuracy: 0.513
+Epoch 30, Validation Loss: 1.676, Validation Accuracy: 0.542
+Epoch 31, Validation Loss: 1.691, Validation Accuracy: 0.531
+Epoch 32, Validation Loss: 1.694, Validation Accuracy: 0.540
+Epoch 33, Validation Loss: 1.642, Validation Accuracy: 0.538
+Epoch 34, Validation Loss: 1.663, Validation Accuracy: 0.549
+Epoch 35, Validation Loss: 1.676, Validation Accuracy: 0.538
+Epoch 36, Validation Loss: 1.643, Validation Accuracy: 0.547
+Epoch 37, Validation Loss: 1.666, Validation Accuracy: 0.551
+Epoch 38, Validation Loss: 1.643, Validation Accuracy: 0.564
+Epoch 39, Validation Loss: 1.667, Validation Accuracy: 0.533
+Epoch 40, Validation Loss: 1.592, Validation Accuracy: 0.571
