@@ -1,0 +1,21 @@
+{
+	"root_dir": "/media/sf_D_DRIVE/1122_DeepLearning/Final",
+	"preprocess_dir": "preprocess",
+	"defualt_group": "all",
+	"anat_suffix": "T1w.nii.gz",
+	"nii_Rawdata_dir": "/media/sf_D_DRIVE/1122_DeepLearning/Final/raw_data",
+	"func_list": ["task-OTCG_run-1_bold.nii.gz", 
+		          "task-OTCG_run-2_bold.nii.gz",
+	              "task-OTCG_run-3_bold.nii.gz", 
+		          "task-OTCG_run-4_bold.nii.gz" ],
+	"epi_strip": "3dAutomask",
+	"move": "-rigid_body",
+	"cost": "lpc+ZZ",
+	"dummy_scans": 5,
+	"volreg_base_dset_no": 1,
+	"volreg_base": 2,
+	"blur_size": 4.0,
+	"censor_motion": 0.3,
+	"other_align_opt": "-partial_axial",
+	"template": "MNI152_2009_template.nii.gz"
+}
