@@ -1,0 +1,4 @@
+s59B+beta+event_154+tlrc.BRIK s59B comp lie
+s59B+beta+event_034+tlrc.BRIK s59B comp truth
+s59B+beta+event_163+tlrc.BRIK s59B coop lie
+s59B+beta+event_295+tlrc.BRIK s59B coop truth
