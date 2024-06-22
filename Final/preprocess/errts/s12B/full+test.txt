@@ -1,0 +1,4 @@
+s12B+beta+event_052+tlrc.BRIK s12B comp lie
+s12B+beta+event_004+tlrc.BRIK s12B comp truth
+s12B+beta+event_301+tlrc.BRIK s12B coop lie
+s12B+beta+event_277+tlrc.BRIK s12B coop truth

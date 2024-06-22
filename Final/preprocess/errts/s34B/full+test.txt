@@ -1,0 +1,4 @@
+s34B+beta+event_106+tlrc.BRIK s34B comp lie
+s34B+beta+event_118+tlrc.BRIK s34B comp truth
+s34B+beta+event_019+tlrc.BRIK s34B coop lie
+s34B+beta+event_055+tlrc.BRIK s34B coop truth
