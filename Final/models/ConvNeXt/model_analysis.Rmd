@@ -1,0 +1,276 @@
+---
+title: "collect-OTCG-stimuli"
+author: "HYHsiao"
+date: "2024-05-06"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(pacman)
+p_load(dplyr)
+
+base_dir = "D:/1122_DeepLearning/Final/models/ConvNeXt/"
+# model_type = "condition"
+model_type = "within_comp"
+model_dir = paste0(base_dir, model_type)
+# model_dir <- base_dir
+
+setwd(model_dir)
+sub_list = list.files(pattern = "^s", full.names = TRUE, include.dirs = TRUE)
+# sub_list = list.files(pattern = "training_log_s*")
+```
+
+
+
+```{r, include=FALSE, echo=FALSE}
+
+# Load the necessary library
+library(stringr)
+
+# Function to collect training results from a specific subdirectory
+collect.train_result <- function(target_sub, model_dir) {
+  # Full path to the subdirectory
+  full_path <- file.path(model_dir, target_sub)
+  # List files in the target subdirectory
+  result_list <- list.files(path = full_path, pattern = "training_log.*\\.txt", full.names = TRUE)
+  
+  # Apply `grap.train_result` on each log file and collect results
+  results <- lapply(result_list, grap.train_result)
+  
+  # cond_path <- file.path(full_path, "condition+classify.txt")
+  # cond_info <- grap.cond(cond_path)
+  
+  # Merge all data frames for loss and test results
+  loss_df <- do.call(rbind, lapply(results, `[[`, "loss_df"))
+  test_df <- do.call(rbind, lapply(results, `[[`, "test_df"))
+  
+  test_df <- merge(test_df, cond_info[, c("stim", "cond")], by = "stim", all.x = TRUE)
+  
+  loss_df$sub = target_sub
+  test_df$sub = target_sub
+  
+  return(list(loss_df = loss_df, test_df = test_df))
+}
+
+# Function to extract training results from a log file
+grap.train_result <- function(target_stim) {
+  # Read the entire log file into a variable
+  log_data <- readLines(target_stim)
+  
+  # Extract lines for loss information
+  loss_lines <- log_data[grepl("Epoch [0-9]+, Average Loss:", log_data)]
+  # Extract epoch, loss, and timestamp from loss lines
+  loss_df <- data.frame(
+    epoch = as.numeric(str_extract(loss_lines, "(?<=Epoch )\\d+")),
+    loss = as.numeric(str_extract(loss_lines, "(?<=Average Loss: )\\d+\\.\\d+")),
+    timestamp = str_extract(loss_lines, "(?<=Timestamp: ).*")
+  )
+  
+  # Extract lines for test results
+  test_lines <- log_data[grepl("Test at Epoch", log_data)]
+  # Extract epoch and result from test lines
+  test_df <- data.frame(
+    epoch = as.numeric(str_extract(test_lines, "(?<=Epoch )\\d+")),
+    result = str_extract(test_lines, "(?<=: ).*")
+  )
+  
+  stim_info <- str_extract(target_stim, "(?<=stim_)[0-9]+")
+  
+  loss_df$stim = stim_info
+  test_df$stim = stim_info
+  
+  return(list(loss_df = loss_df, test_df = test_df))
+}
+
+# Function to extract training results from a log file
+grap.cond <- function(target_file) {
+  # Read the entire log file into a variable
+  log_data <- readLines(target_file)
+  
+  # Extract lines for loss information
+  cond_lines <- log_data[grepl("s", log_data)]
+  # Extract epoch, loss, and timestamp from loss lines
+  cond_df <- data.frame(
+    cond = str_extract(cond_lines, "(?<=\\+tlrc\\.BRIK ).*")
+  )
+  
+  cond_df$stim <- sprintf("%03d", seq_len(nrow(cond_df)))
+  
+  return(cond_df = cond_df)
+}
+
+# Assuming sub_list is a list of subdirectory names and model_dir is defined
+final_results <- lapply(sub_list, collect.train_result, model_dir = model_dir)
+
+# Combine all results into single dataframes
+final_loss_df <- do.call(rbind, lapply(final_results, `[[`, "loss_df"))
+final_test_df <- do.call(rbind, lapply(final_results, `[[`, "test_df"))
+
+p_load(ggplot2)
+p_load(ggstats)
+
+# acc_plot <- final_test_df |>
+#   dplyr::group_by(sub, epoch, cond) |>
+#   dplyr::mutate(cor = result == "Correct") |>
+#   dplyr::mutate(exist = !is.na(cor)) |>
+#   summarise(cond_acc = sum(cor) / sum(exist), .groups = "drop") |>
+#   group_by(sub, epoch) |>
+#   summarise(acc = mean(cond_acc), .groups = "drop") |>
+#   group_by(epoch) |>
+#   summarise(acc = mean(acc), .groups = "drop") |>
+#   ggplot(aes(x=epoch, y=acc)) +
+#   geom_line() +
+#   theme(legend.position='top')
+# ggsave(paste0(model_type,"+acc_plot+group+w.jpg"), plot=acc_plot, width=6, height=4)
+
+
+
+loss_plot <- final_loss_df |> 
+  dplyr::group_by(sub, epoch) |>
+  dplyr::reframe(loss = mean(loss)) |>
+  ggplot(aes(x=epoch, y=loss, group=sub, color=sub)) +
+  geom_line() +
+  scale_y_log10() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+loss_plot.jpg"), plot=loss_plot, width=6, height=4)
+
+acc_plot <- final_test_df |> 
+  dplyr::group_by(sub, epoch) |>
+  dplyr::mutate(cor = result == "Correct") |>
+  dplyr::mutate(exist = !is.na(cor)) |>
+  dplyr::reframe(acc = sum(cor) / sum(exist)) |>
+  ggplot(aes(x=epoch, y=acc, group=sub, color=sub)) +
+  geom_line() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+acc_plot.jpg"), plot=acc_plot, width=6, height=4)
+
+loss_plot <- final_loss_df |> 
+  dplyr::group_by(epoch) |>
+  dplyr::reframe(loss = mean(loss)) |>
+  ggplot(aes(x=epoch, y=loss)) +
+  geom_line() +
+  scale_y_log10() +
+  xlim(0, 50) +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+loss_plot+group.jpg"), plot=loss_plot, width=6, height=4)
+
+acc_plot <- final_test_df |> 
+  dplyr::group_by(epoch) |>
+  dplyr::mutate(cor = result == "Correct") |>
+  dplyr::mutate(exist = !is.na(cor)) |>
+  dplyr::reframe(acc = sum(cor) / sum(exist)) |>
+  ggplot(aes(x=epoch, y=acc)) +
+  geom_line() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+acc_plot+group.jpg"), plot=acc_plot, width=6, height=4)
+
+getwd()
+```
+
+
+
+```{r}
+
+# Load the necessary library
+library(stringr)
+
+# Function to collect training results from a specific subdirectory
+collect.train_result <- function(target_sub, model_dir) {
+  # Full path to the subdirectory
+  full_path <- file.path(model_dir, target_sub)
+  # List files in the target subdirectory
+  result_list <- list.files(path = full_path, pattern = "training_log.*\\.txt", full.names = TRUE)
+  
+  # Apply `grap.train_result` on each log file and collect results
+  results <- lapply(result_list, grap.train_result)
+  
+  # Merge all data frames for loss and test results
+  loss_df <- do.call(rbind, lapply(results, `[[`, "loss_df"))
+  test_df <- do.call(rbind, lapply(results, `[[`, "test_df"))
+  
+  loss_df$sub = target_sub
+  test_df$sub = target_sub
+  
+  return(list(loss_df = loss_df, test_df = test_df))
+}
+
+grap.train_result <- function(target_stim) {
+  # Read the entire log file into a variable
+  log_data <- readLines(target_stim)
+  
+  # Extract lines for loss and accuracy information
+  loss_lines <- log_data[grepl("Epoch [0-9]+, Train Loss:", log_data)]
+  
+  # Extract epoch, train loss, val loss, val accuracy, and timestamp from loss lines
+  loss_df <- data.frame(
+    epoch = as.numeric(str_extract(loss_lines, "(?<=Epoch )\\d+")),
+    train_loss = as.numeric(str_extract(loss_lines, "(?<=Train Loss: )\\d+\\.\\d+")),
+    val_loss = as.numeric(str_extract(loss_lines, "(?<=Val Loss: )\\d+\\.\\d+")),
+    timestamp = str_extract(loss_lines, "(?<=Timestamp: ).*")
+  )
+  
+  # Extract lines for validation accuracy
+  test_lines <- loss_lines  # As validation accuracy is part of the same line
+  
+  # Extract epoch and validation accuracy
+  test_df <- data.frame(
+    epoch = as.numeric(str_extract(test_lines, "(?<=Epoch )\\d+")),
+    val_accuracy = as.numeric(gsub("%", "", str_extract(test_lines, "(?<=Val Accuracy: )\\d+\\.\\d+%"))) / 100
+  )
+  
+  # Extract stim info from filename
+  stim_info <- str_extract(target_stim, "(?<=stim_)[0-9]+")
+  
+  # Add stim_info to both data frames
+  loss_df$stim = stim_info
+  test_df$stim = stim_info
+  
+  return(list(loss_df = loss_df, test_df = test_df))
+}
+
+# Assuming sub_list is a list of subdirectory names and model_dir is defined
+final_results <- lapply(sub_list, collect.train_result, model_dir = model_dir)
+
+# Combine all results into single dataframes
+final_loss_df <- do.call(rbind, lapply(final_results, `[[`, "loss_df"))
+final_test_df <- do.call(rbind, lapply(final_results, `[[`, "test_df"))
+
+p_load(ggplot2)
+p_load(ggstats)
+
+loss_plot <- final_loss_df |> 
+  dplyr::group_by(sub, epoch) |>
+  dplyr::reframe(loss = mean(train_loss)) |>
+  ggplot(aes(x=epoch, y=loss, group=sub, color=sub)) +
+  geom_line() +
+  scale_y_log10() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+loss_plot.jpg"), plot=loss_plot, width=6, height=4)
+
+acc_plot <- final_test_df |> 
+  dplyr::group_by(sub, epoch) |>
+  dplyr::reframe(acc = mean(val_accuracy)) |>
+  ggplot(aes(x=epoch, y=acc, group=sub, color=sub)) +
+  geom_line() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+acc_plot.jpg"), plot=acc_plot, width=6, height=4)
+
+loss_plot <- final_loss_df |> 
+  dplyr::group_by(epoch) |>
+  dplyr::reframe(loss = mean(train_loss)) |>
+  ggplot(aes(x=epoch, y=loss)) +
+  geom_line() +
+  scale_y_log10() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+loss_plot+group.jpg"), plot=loss_plot, width=6, height=4)
+
+acc_plot <- final_test_df |> 
+  dplyr::group_by(epoch) |>
+  dplyr::reframe(acc = mean(val_accuracy)) |>
+  ggplot(aes(x=epoch, y=acc)) +
+  geom_line() +
+  theme(legend.position='top')
+ggsave(paste0(model_type,"+acc_plot+group.jpg"), plot=acc_plot, width=6, height=4)
+
+```
+
